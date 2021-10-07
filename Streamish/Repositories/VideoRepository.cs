@@ -249,37 +249,97 @@ namespace Streamish.Repositories
             }
         }
 
-            public void Add(Video video)
+        public List<Video> Search(string criterion, bool sortDescending)
+        {
+            using (var conn = Connection)
             {
-                using (var conn = Connection)
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
                 {
-                    conn.Open();
-                    using (var cmd = conn.CreateCommand())
+                    var sql = @"
+              SELECT v.Id, v.Title, v.Description, v.Url, v.DateCreated AS VideoDateCreated, v.UserProfileId,
+
+                     up.Name, up.Email, up.DateCreated AS UserProfileDateCreated,
+                     up.ImageUrl AS UserProfileImageUrl
+                        
+                FROM Video v 
+                     JOIN UserProfile up ON v.UserProfileId = up.Id
+               WHERE v.Title LIKE @Criterion OR v.Description LIKE @Criterion";
+
+                    if (sortDescending)
                     {
-                        cmd.CommandText = @"
+                        sql += " ORDER BY v.DateCreated DESC";
+                    }
+                    else
+                    {
+                        sql += " ORDER BY v.DateCreated";
+                    }
+
+                    cmd.CommandText = sql;
+                    DbUtils.AddParameter(cmd, "@Criterion", $"%{criterion}%");
+                    var reader = cmd.ExecuteReader();
+
+                    var videos = new List<Video>();
+                    while (reader.Read())
+                    {
+                        videos.Add(new Video()
+                        {
+                            Id = DbUtils.GetInt(reader, "Id"),
+                            Title = DbUtils.GetString(reader, "Title"),
+                            Description = DbUtils.GetString(reader, "Description"),
+                            DateCreated = DbUtils.GetDateTime(reader, "VideoDateCreated"),
+                            Url = DbUtils.GetString(reader, "Url"),
+                            UserProfileId = DbUtils.GetInt(reader, "UserProfileId"),
+                            UserProfile = new UserProfile()
+                            {
+                                Id = DbUtils.GetInt(reader, "UserProfileId"),
+                                Name = DbUtils.GetString(reader, "Name"),
+                                Email = DbUtils.GetString(reader, "Email"),
+                                DateCreated = DbUtils.GetDateTime(reader, "UserProfileDateCreated"),
+                                ImageUrl = DbUtils.GetString(reader, "UserProfileImageUrl"),
+                            },
+                        });
+                    }
+
+                    reader.Close();
+
+                    return videos;
+                }
+            }
+        }
+
+
+        public void Add(Video video)
+        {
+            using (var conn = Connection)
+            {
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
+                {
+                    cmd.CommandText = @"
                         INSERT INTO Video (Title, Description, DateCreated, Url, UserProfileId)
                         OUTPUT INSERTED.ID
                         VALUES (@Title, @Description, @DateCreated, @Url, @UserProfileId)";
 
-                        DbUtils.AddParameter(cmd, "@Title", video.Title);
-                        DbUtils.AddParameter(cmd, "@Description", video.Description);
-                        DbUtils.AddParameter(cmd, "@DateCreated", video.DateCreated);
-                        DbUtils.AddParameter(cmd, "@Url", video.Url);
-                        DbUtils.AddParameter(cmd, "@UserProfileId", video.UserProfileId);
+                    DbUtils.AddParameter(cmd, "@Title", video.Title);
+                    DbUtils.AddParameter(cmd, "@Description", video.Description);
+                    DbUtils.AddParameter(cmd, "@DateCreated", video.DateCreated);
+                    DbUtils.AddParameter(cmd, "@Url", video.Url);
+                    DbUtils.AddParameter(cmd, "@UserProfileId", video.UserProfileId);
 
-                        video.Id = (int)cmd.ExecuteScalar();
-                    }
+                    video.Id = (int)cmd.ExecuteScalar();
                 }
             }
+        }
 
-            public void Update(Video video)
+        public void Update(Video video)
+        {
+            using (var conn = Connection)
             {
-                using (var conn = Connection)
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
                 {
-                    conn.Open();
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.CommandText = @"
+                    cmd.CommandText = @"
                         UPDATE Video
                            SET Title = @Title,
                                Description = @Description,
@@ -288,30 +348,30 @@ namespace Streamish.Repositories
                                UserProfileId = @UserProfileId
                          WHERE Id = @Id";
 
-                        DbUtils.AddParameter(cmd, "@Title", video.Title);
-                        DbUtils.AddParameter(cmd, "@Description", video.Description);
-                        DbUtils.AddParameter(cmd, "@DateCreated", video.DateCreated);
-                        DbUtils.AddParameter(cmd, "@Url", video.Url);
-                        DbUtils.AddParameter(cmd, "@UserProfileId", video.UserProfileId);
-                        DbUtils.AddParameter(cmd, "@Id", video.Id);
+                    DbUtils.AddParameter(cmd, "@Title", video.Title);
+                    DbUtils.AddParameter(cmd, "@Description", video.Description);
+                    DbUtils.AddParameter(cmd, "@DateCreated", video.DateCreated);
+                    DbUtils.AddParameter(cmd, "@Url", video.Url);
+                    DbUtils.AddParameter(cmd, "@UserProfileId", video.UserProfileId);
+                    DbUtils.AddParameter(cmd, "@Id", video.Id);
 
-                        cmd.ExecuteNonQuery();
-                    }
+                    cmd.ExecuteNonQuery();
                 }
             }
+        }
 
-            public void Delete(int id)
+        public void Delete(int id)
+        {
+            using (var conn = Connection)
             {
-                using (var conn = Connection)
+                conn.Open();
+                using (var cmd = conn.CreateCommand())
                 {
-                    conn.Open();
-                    using (var cmd = conn.CreateCommand())
-                    {
-                        cmd.CommandText = "DELETE FROM Video WHERE Id = @Id";
-                        DbUtils.AddParameter(cmd, "@id", id);
-                        cmd.ExecuteNonQuery();
-                    }
+                    cmd.CommandText = "DELETE FROM Video WHERE Id = @Id";
+                    DbUtils.AddParameter(cmd, "@id", id);
+                    cmd.ExecuteNonQuery();
                 }
             }
         }
     }
+}
