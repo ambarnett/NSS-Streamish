@@ -10,6 +10,7 @@ namespace Streamish.Repositories
         List<Video> GetAll();
         Video GetById(int id);
         List<Video> GetAllWithComments();
+        Video GetVideoByIdWithComments(int id);
         void Update(Video video);
     }
 }
