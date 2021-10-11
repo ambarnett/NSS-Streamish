@@ -14,3 +14,12 @@ export const addVideo = (video) => {
         body: JSON.stringify(video),
     });
 };
+
+export const getVideo = (id) => {
+    return fetch(`${baseUrl}/GetVideoByIdWithComments/${id}`).then((res) => res.json());
+};
+
+export const searchVideo = () => {
+    return fetch (`${baseUrl}/search`)
+    .then(res => res.json())
+};
